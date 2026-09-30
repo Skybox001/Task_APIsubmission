@@ -14,8 +14,9 @@ implemented `PATCH /tasks/:id/assign` on top.
 | Deliverable | Where |
 |---|---|
 | Unit tests | [`task-api/tests/taskService.test.js`](./task-api/tests/taskService.test.js) |
+| Unit tests — validators | [`task-api/tests/validators.test.js`](./task-api/tests/validators.test.js) |
 | Integration tests (Supertest) | [`task-api/tests/tasks.routes.test.js`](./task-api/tests/tasks.routes.test.js) |
-| Bug report — 8 bugs, 3 fixed | [`BUG_REPORT.md`](./BUG_REPORT.md) |
+| Bug report — 8 bugs, 5 fixed | [`BUG_REPORT.md`](./BUG_REPORT.md) |
 | Notes, tradeoffs, design decisions | [`SUBMISSION_NOTES.md`](./SUBMISSION_NOTES.md) |
 | Deployment config (Render) | [`render.yaml`](./render.yaml) |
 | **Live URL** | **https://task-apisubmission.onrender.com** |
@@ -27,23 +28,24 @@ implemented `PATCH /tasks/:id/assign` on top.
 
 ### Test results
 
-`npm run coverage` — **68 tests, all passing**, 98.7% statement coverage:
+`npm run coverage` — **116 tests, all passing**, 98.7% statement coverage:
 
 ```
 File             | % Stmts | % Branch | % Funcs | % Lines | Uncovered
 -----------------|---------|----------|---------|---------|-----------
-All files        |   98.73 |    97.75 |   96.66 |   98.61 |
+All files        |   98.71 |     97.5 |   96.77 |   98.58 |
  src             |   84.61 |       75 |      50 |   84.61 | 17-18  (app.listen)
  src/routes      |     100 |      100 |     100 |     100 |
   tasks.js       |     100 |      100 |     100 |     100 |
- src/services    |     100 |    94.73 |     100 |     100 |
-  taskService.js |     100 |    94.73 |     100 |     100 |
+ src/services    |     100 |    95.23 |     100 |     100 |
+  taskService.js |     100 |    95.23 |     100 |     100 | 26  (unknown status guard)
  src/utils       |     100 |      100 |     100 |     100 |
   validators.js  |     100 |      100 |     100 |     100 |
 ```
 
 Every route handler and validator is at 100%. The only uncovered lines are the
-`app.listen` callback, which doesn't run under Jest.
+`app.listen` callback, which doesn't run under Jest, and one defensive branch in
+`getStats`.
 
 ### Bugs found and fixed
 
@@ -52,11 +54,16 @@ Found by writing tests, not by reading for bugs. Details in [`BUG_REPORT.md`](./
 1. **`?status=` filter matched substrings** — `getByStatus` used `t.status.includes(status)`, so `?status=do` returned both `todo` and `done`. Fixed to `===`.
 2. **Pagination skipped the first page** — `offset = page * limit` with a 1-indexed API, so `page=1` returned nothing. Fixed to `(page - 1) * limit`; also clamped `page`/`limit` to `>= 1`, since `parseInt('-3') || 1` stayed `-3`.
 3. **Completing a task silently reset its priority** — `completeTask` hard-coded `priority: 'medium'`, destroying user data. Removed.
+4. **Completing a task twice lost the completion time** — each call re-stamped `completedAt`, so a retry or double-click overwrote the real value. Completing is now idempotent: the first stamp wins, and re-completing still returns 200.
+5. **Falsy-but-invalid values bypassed validation** — `body.status && ...` meant `status: ''` passed and got stored (defaults only apply to `undefined`). Now presence is tested explicitly. `dueDate: null` stays valid, since the task shape uses it to mean "no due date".
 
-The other five bugs are documented but left unfixed on purpose, each pinned by a
+The other three bugs are documented but left unfixed on purpose, each pinned by a
 `test.failing` test so the suite stays green and the bug can't regress unnoticed.
 That test starts failing the moment someone fixes the bug — which is the signal
 to flip it to a plain `test()`.
+
+I confirmed the tests are meaningful by reintroducing each bug and checking that
+**17 tests fail**, then restoring the fixes.
 
 ### New endpoint: `PATCH /tasks/:id/assign`
 

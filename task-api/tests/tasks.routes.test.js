@@ -29,10 +29,24 @@ describe('POST /tasks', () => {
     expect(res.body.error).toEqual(expect.any(String));
   });
 
-  // BUG #6: falsy-but-invalid values skip validation because of `body.status && ...`.
-  test.failing('rejects empty-string status', async () => {
-    const res = await request(app).post('/tasks').send({ title: 'x', status: '' });
+  // FIXED (bug #6): falsy-but-invalid values used to skip validation because of
+  // `body.status && ...`, so '' was accepted and stored on the task.
+  test.each([
+    ['empty-string status', { title: 'x', status: '' }],
+    ['empty-string priority', { title: 'x', priority: '' }],
+    ['null status', { title: 'x', status: null }],
+  ])('400 on %s', async (_name, body) => {
+    const res = await request(app).post('/tasks').send(body);
     expect(res.status).toBe(400);
+    expect(res.body.error).toEqual(expect.any(String));
+  });
+
+  // dueDate: null means "no due date" in the documented task shape, so it must
+  // stay valid even though it is falsy.
+  test('accepts dueDate: null', async () => {
+    const res = await request(app).post('/tasks').send({ title: 'x', dueDate: null });
+    expect(res.status).toBe(201);
+    expect(res.body.dueDate).toBeNull();
   });
 });
 
@@ -111,6 +125,7 @@ describe('PUT /tasks/:id', () => {
 
   test.each([
     [{ title: '' }], [{ title: 5 }], [{ status: 'bad' }], [{ priority: 'bad' }], [{ dueDate: 'bad' }],
+    [{ status: '' }], [{ priority: '' }], [{ status: 0 }],
   ])('400 on invalid body %j', async (body) => {
     const t = await create();
     expect((await request(app).put(`/tasks/${t.id}`).send(body)).status).toBe(400);
@@ -148,6 +163,17 @@ describe('PATCH /tasks/:id/complete', () => {
 
   test('404 for unknown id', async () => {
     expect((await request(app).patch('/tasks/nope/complete')).status).toBe(404);
+  });
+
+  // FIXED (bug #5): the second call used to re-stamp completedAt. Both calls
+  // return 200 and the original completion time survives.
+  test('completing twice keeps the first completedAt', async () => {
+    const t = await create({ title: 'x' });
+    const first = await request(app).patch(`/tasks/${t.id}/complete`);
+    await new Promise((r) => setTimeout(r, 15));
+    const second = await request(app).patch(`/tasks/${t.id}/complete`);
+    expect(second.status).toBe(200);
+    expect(second.body.completedAt).toBe(first.body.completedAt);
   });
 });
 

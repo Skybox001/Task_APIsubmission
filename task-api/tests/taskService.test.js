@@ -1,7 +1,8 @@
 // Unit tests for src/services/taskService.js (called directly, no HTTP).
 // Tests marked test.failing document KNOWN, UNFIXED bugs (see BUG_REPORT.md):
 // they pass while the bug exists and will start failing once it is fixed,
-// which is the signal to flip them to plain test().
+// which is the signal to flip them to plain test(). Bug #4 (mass assignment
+// on update) is the only one still in that state.
 const service = require('../src/services/taskService');
 
 beforeEach(() => service._reset());
@@ -135,13 +136,23 @@ describe('completeTask', () => {
     expect(service.completeTask('nope')).toBeNull();
   });
 
-  // BUG #5: completing twice overwrites the original completion time.
-  test.failing('is idempotent: completedAt keeps the first completion time', async () => {
+  // FIXED (bug #5): completing twice used to overwrite completedAt, losing the
+  // real completion time. The first stamp must win.
+  test('is idempotent: completedAt keeps the first completion time', async () => {
     const t = make();
     const first = service.completeTask(t.id);
     await new Promise((r) => setTimeout(r, 15));
     const second = service.completeTask(t.id);
     expect(second.completedAt).toBe(first.completedAt);
+  });
+
+  test('re-completing a done task leaves the rest of the task untouched', async () => {
+    const t = make({ title: 'x', priority: 'low' });
+    service.assignTask(t.id, 'Garv');
+    const first = service.completeTask(t.id);
+    const second = service.completeTask(t.id);
+    expect(second).toEqual(first);
+    expect(second).toMatchObject({ title: 'x', priority: 'low', assignee: 'Garv' });
   });
 });
 

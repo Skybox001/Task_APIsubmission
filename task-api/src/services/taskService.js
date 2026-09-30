@@ -69,6 +69,12 @@ const completeTask = (id) => {
   const task = findById(id);
   if (!task) return null;
 
+  // FIX (bug #5): completing a task that is already done re-stamped
+  // `completedAt`, so the real completion time was lost on any retry or
+  // double-click. Completing is now idempotent — the first stamp wins and
+  // re-completing is a no-op that still returns 200 with the task.
+  if (task.status === 'done') return task;
+
   // FIX (bug #3): this used to also reset `priority` to 'medium', silently
   // destroying the user's data. Completing a task must only touch status/completedAt.
   const updated = {
