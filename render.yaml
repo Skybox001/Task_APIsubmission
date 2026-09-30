@@ -1,0 +1,9 @@
+# One-click deploy on Render (Blueprint): New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: task-api
+    runtime: node
+    rootDir: task-api
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
