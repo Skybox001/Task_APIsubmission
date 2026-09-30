@@ -18,7 +18,12 @@ implemented `PATCH /tasks/:id/assign` on top.
 | Bug report — 8 bugs, 3 fixed | [`BUG_REPORT.md`](./BUG_REPORT.md) |
 | Notes, tradeoffs, design decisions | [`SUBMISSION_NOTES.md`](./SUBMISSION_NOTES.md) |
 | Deployment config (Render) | [`render.yaml`](./render.yaml) |
-| Live URL | Deploy with [`render.yaml`](./render.yaml) (Render → New → Blueprint), or run `npm start` locally |
+| **Live URL** | **https://task-apisubmission.onrender.com** |
+
+> The live instance uses the same in-memory store as local, so **its data resets
+> whenever it restarts** (free dynos also sleep when idle, which counts as a
+> restart). Anything you create there is fine to poke at, but don't rely on it
+> persisting — and it does not share data with a local `npm start`.
 
 ### Test results
 
@@ -55,8 +60,10 @@ to flip it to a plain `test()`.
 
 ### New endpoint: `PATCH /tasks/:id/assign`
 
+Live: `PATCH https://task-apisubmission.onrender.com/tasks/<id>/assign`
+
 ```bash
-curl -X PATCH http://localhost:3000/tasks/<id>/assign \
+curl -X PATCH https://task-apisubmission.onrender.com/tasks/<id>/assign \
   -H "Content-Type: application/json" \
   -d '{"assignee": "Garv"}'
 ```

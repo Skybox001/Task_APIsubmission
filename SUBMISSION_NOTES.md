@@ -1,5 +1,8 @@
 # Submission Notes
 
+**Git:** https://github.com/Skybox001/Task_APIsubmission
+**Live:** https://task-apisubmission.onrender.com
+
 ## What I did
 - **Tests:** `task-api/tests/taskService.test.js` (unit) and `tasks.routes.test.js` (Supertest integration). 68 tests, about 99% statement coverage (run `npm run coverage`).
 - **Bug report:** see `BUG_REPORT.md`. Eight bugs found, three fixed (status filter, pagination offset, priority reset).
